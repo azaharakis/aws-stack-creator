@@ -1,0 +1,10 @@
+
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: arn:aws:ecs:us-west-2:905993664314:task-definition/ecs-cluster-foo:7
+        LoadBalancerInfo:
+          ContainerName: sample-website
+          ContainerPort: 80

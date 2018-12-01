@@ -1,0 +1,12 @@
+{
+  "name": "create-ecs-resources",
+  "version": "1.0.0",
+  "dependencies": {
+    "aws-sdk": "^2.364.0",
+    "inquirer": "^6.2.0",
+    "lodash": "^4.17.11",
+    "prettier": "^1.15.2",
+    "prompt": "^1.0.0",
+    "shelljs": "^0.8.3"
+  }
+}
