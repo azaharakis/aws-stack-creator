@@ -1,32 +1,42 @@
-import renderMenu, { getRegions } from "../renderMenu";
+import _ from "lodash";
+import renderMenu, { clearAndCallAgain, setRegions } from "../renderMenu";
+import regionsFromCache from "../cache.json";
+export let { regions: selectedRegions } = regionsFromCache;
 
-import { Operations } from "./operations";
-
-const MenuItems = {
-  [Operations.ListAllStacks]: `List stacks status`,
-  [Operations.List]: "Display stacks Events",
-  [Operations.Create]: `Create stacks`,
-  [Operations.Delete]: `Delete stacks`,
-  [Operations.PickRegion]: "Select Regions"
-};
-
-export default async ({ operations }, { regions }) => {
-  if (!global.SELECTED_REGIONS) {
-    await getRegions(regions);
+export default async (
+  { ListAllStacks, List, Create, Delete, PickRegion },
+  { supportedRegions }
+) => {
+  if (!selectedRegions) {
+    selectedRegions = await setRegions(supportedRegions);
   }
 
-  const menu = Object.keys(MenuItems).reduce((prev, next) => {
-    return {
-      ...prev,
-      [MenuItems[next]]: operations[next]
-    };
-  }, {});
+  const list = () => clearAndCallAgain(() => ListAllStacks(selectedRegions));
+  const describe = () =>
+    clearAndCallAgain(() => List(selectedRegions), _.flatten);
 
-  return renderMenu(menu, {
-    heading: () =>
-      `Operating in the following regions ${global.SELECTED_REGIONS.join(", ")}
+  return renderMenu(
+    {
+      [`List stacks status`]: list,
+      [`Display stacks Events`]: describe,
+      [`Create stacks`]: async () => {
+        await Create(selectedRegions);
+        await describe();
+      },
+      [`Delete stacks`]: async () => {
+        await Delete(selectedRegions);
+        await list();
+      },
+      [`Select Regions`]: async () => {
+        selectedRegions = await setRegions(supportedRegions);
+      }
+    },
+    {
+      heading: () =>
+        `Operating in the following regions ${selectedRegions.join(", ")}
       
       ------------------------
       `
-  });
+    }
+  );
 };

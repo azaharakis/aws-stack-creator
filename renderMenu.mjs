@@ -1,4 +1,5 @@
 import inquirer from "inquirer";
+import fs from "fs";
 
 const renderMenu = async items =>
   await inquirer.prompt([
@@ -26,11 +27,10 @@ export default async (functions, { heading } = {}) => {
     }
 
     await functions[choice]();
-    process.stdout.write("\x1B[2J");
   }
 };
 
-export const getRegions = async regionList => {
+export const setRegions = async regionList => {
   const { selectedRegions } = await inquirer.prompt([
     {
       name: "selectedRegions",
@@ -39,5 +39,35 @@ export const getRegions = async regionList => {
       choices: regionList
     }
   ]);
-  global.SELECTED_REGIONS = selectedRegions;
+
+  fs.writeFile(
+    "./cache.json",
+    JSON.stringify({ regions: selectedRegions }),
+    "utf8",
+    () => {}
+  );
+  return selectedRegions;
+};
+
+const timeout = ms => new Promise(res => setTimeout(res, ms));
+
+const loopUntilQuit = async fn => {
+  let breakLoop = false;
+  const listenForCancel = function() {
+    breakLoop = true;
+    process.removeListener("SIGINT", listenForCancel);
+  };
+  process.on("SIGINT", listenForCancel);
+  await fn();
+  await timeout(1000);
+  process.removeListener("SIGINT", listenForCancel);
+  !breakLoop && (await loopUntilQuit(fn));
+};
+
+export const clearAndCallAgain = (fn, proccesor) => {
+  return loopUntilQuit(async () => {
+    const result = await fn();
+    process.stdout.write("\x1B[2J");
+    console.table(proccesor ? proccesor(result) : result);
+  });
 };

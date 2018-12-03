@@ -1,5 +1,5 @@
 TODO:
 - Passing around the region is cumbersome
 - Make exiting out of describe calls quicker (awaiting the promise blocks the exiting of the recursive function)
-- call afterCreate fn when the stack is updating and not creating
-- store the selected regions in a file
+- Handle selected regions some with stacks some without
+- Use an event emitter for storing the selected regions, pass it in at the top of the menu

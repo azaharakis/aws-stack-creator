@@ -1,51 +1,29 @@
 import { getSubnetsForRegion } from "../../getSubnetsForRegion";
-import { cloudFormation, ecs, ec2 } from "../../clients";
+import { ecs, ec2 } from "../../clients";
 
-const getStackResources = async (stackName, region) => {
-  const [
-    {
-      StackResourceDetail: { PhysicalResourceId: targetGroupArn }
-    },
-    {
-      StackResourceDetail: { PhysicalResourceId: cluster }
-    },
-    {
-      StackResourceDetail: { PhysicalResourceId: taskDefinition }
-    }
-  ] = await Promise.all(
-    ["TargetGroup1", "ECSCluster", "ECSTaskDefinition"].map(
-      async LogicalResourceId => {
-        return await cloudFormation(region)
-          .describeStackResource({
-            LogicalResourceId,
-            StackName: stackName
-          })
-          .promise();
-      }
-    )
-  );
-  return {
-    cluster,
-    targetGroupArn,
-    taskDefinition
-  };
-};
+const serviceName = "service-for-my-stack";
 
-export const afterCreate = async (stackName, region) => {
+export const afterCreate = async (region, getStackResources) => {
   const { Vpcs } = await ec2(region)
     .describeVpcs()
     .promise();
   const { VpcId } = Vpcs.find(v => v.IsDefault === true);
   const Subnets = await getSubnetsForRegion(VpcId, region);
-  const { cluster, targetGroupArn, taskDefinition } = await getStackResources(
-    stackName,
-    region
+
+  const [
+    { PhysicalResourceId: targetGroupArn },
+    { PhysicalResourceId: cluster },
+    { PhysicalResourceId: taskDefinition }
+  ] = await getStackResources(
+    "TargetGroup1",
+    "ECSCluster",
+    "ECSTaskDefinition"
   );
   await ecs(region)
     .createService({
       taskDefinition,
       cluster,
-      serviceName: stackName,
+      serviceName,
       loadBalancers: [
         {
           targetGroupArn,
@@ -84,8 +62,10 @@ export const afterCreate = async (stackName, region) => {
   //   );
 };
 
-export const beforeDelete = async (stackName, region) => {
-  const { cluster } = await getStackResources(stackName, region);
+export const beforeDelete = async (region, getStackResources) => {
+  const [{ PhysicalResourceId: cluster }] = await getStackResources(
+    "ECSCluster"
+  );
   const { taskArns } = await ecs(region)
     .listTasks({ cluster })
     .promise();
@@ -97,7 +77,7 @@ export const beforeDelete = async (stackName, region) => {
     })
   );
   await ecs(region)
-    .deleteService({ service: stackName, cluster: stackName, force: true })
+    .deleteService({ service: serviceName, cluster, force: true })
     .promise()
     .catch(e => e);
 };

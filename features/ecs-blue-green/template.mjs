@@ -1,7 +1,7 @@
 import { getSubnetsForRegion } from "../../getSubnetsForRegion";
 import { ec2 } from "../../clients";
 
-export default async (StackName, region) => {
+export default async (region) => {
   const { Vpcs } = await ec2(region)
     .describeVpcs()
     .promise();
@@ -16,7 +16,6 @@ export default async (StackName, region) => {
   };
 
   return {
-    StackName,
     TemplateBody: JSON.stringify({
       AWSTemplateFormatVersion: "2010-09-09",
       Parameters: {
@@ -78,7 +77,7 @@ export default async (StackName, region) => {
         ECSCluster: {
           Type: "AWS::ECS::Cluster",
           Properties: {
-            ClusterName: StackName
+            ClusterName: 'ecs-cluster'
           }
         },
         ECSTaskDefinition: {
@@ -104,7 +103,7 @@ export default async (StackName, region) => {
             ],
             Cpu: "256",
             ExecutionRoleArn: "ecsTaskExecutionRole",
-            Family: StackName,
+            Family: 'ecs-cluster',
             Memory: "512",
             NetworkMode: "awsvpc",
             RequiresCompatibilities: ["FARGATE"]

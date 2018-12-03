@@ -1,16 +1,15 @@
-import createStack from "./template";
+import stackTemplate from "./template";
 import { cloudFormationMenu } from "../../cloudFormation";
-import { beforeDelete, afterCreate } from "./additionalFunctions";
+import { beforeDelete, afterCreate } from "./lifecycleEvents";
 
 export default {
-  ["Create ECS resources"]: async () => {
-    const stackName = "my-stack";
+  ["ECS codeDeploy dependency stack"]: async () => {
     return cloudFormationMenu({
-      stackName,
-      stackTemplate: (region) => createStack(stackName, region),
-      beforeDelete: (region) => beforeDelete(stackName, region),
-      afterCreate: (region) => afterCreate(stackName, region),
-      regions: [
+      stackName: "my-stack",
+      stackTemplate,
+      beforeDelete,
+      afterCreate,
+      supportedRegions: [
         "us-west-1",
         "us-east-1",
         "us-west-2",

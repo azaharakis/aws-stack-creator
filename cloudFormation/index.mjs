@@ -1,7 +1,9 @@
 import Operations from "./operations";
 import Menu from "./menu";
 
-export const cloudFormationMenu = ({ regions, ...rest }) => {
-  const operations = Operations({ regions, ...rest });
-  return Menu({ operations }, { regions });
+export const cloudFormationMenu = ({ supportedRegions, ...operationProps }) => {
+  const operations = Operations({
+    ...operationProps
+  });
+  return Menu(operations, { supportedRegions });
 };
