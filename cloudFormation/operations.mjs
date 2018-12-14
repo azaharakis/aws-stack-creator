@@ -5,7 +5,8 @@ import {
 import { cloudFormation } from "../clients";
 
 const Exceptions = {
-  AlreadyExistsException: "AlreadyExistsException"
+  AlreadyExistsException: "AlreadyExistsException",
+  ValidationError: "ValidationError"
 };
 
 const callIfFunction = async (maybeFn, ...args) =>
@@ -33,66 +34,83 @@ export default ({
   beforeDelete,
   afterDelete
 }) => {
-  return {
-    List: async regions =>
-      await Promise.all(regions.map(describeUntilDone(stackName))),
-    ListAllStacks: async regions =>
-      await Promise.all(regions.map(getStatusUntilDone(stackName))),
-    Create: async regions => {
-      regions.forEach(async region => {
-        const template = {
-          StackName: stackName,
-          ...(await stackTemplate(region))
-        };
-        await callIfFunction(
-          beforeCreate,
-          region,
-          getStackResources(stackName, region)
-        );
-        try {
-          await cloudFormation(region)
-            .createStack(template)
-            .promise();
-        } catch (e) {
-          if (e.code === Exceptions.AlreadyExistsException) {
+  const List = async regions =>
+    await Promise.all(regions.map(describeUntilDone(stackName)));
+  const ListAllStacks = async regions =>
+    await Promise.all(regions.map(getStatusUntilDone(stackName)));
+
+  const Delete = async regions =>
+    regions.map(async region => {
+      await callIfFunction(
+        beforeDelete,
+        region,
+        getStackResources(stackName, region)
+      );
+      await cloudFormation(region)
+        .deleteStack({
+          StackName: stackName
+        })
+        .promise();
+      await cloudFormation(region)
+        .waitFor("stackDeleteComplete", { StackName: stackName }, () =>
+          callIfFunction(
+            afterDelete,
+            region,
+            getStackResources(stackName, region)
+          )
+        )
+        .promise();
+    });
+
+  const Create = regions =>
+    regions.map(async region => {
+      const template = {
+        StackName: stackName,
+        ...(await stackTemplate(region))
+      };
+      await callIfFunction(
+        beforeCreate,
+        region,
+        getStackResources(stackName, region)
+      );
+      try {
+        await cloudFormation(region)
+          .createStack(template)
+          .promise();
+      } catch (e) {
+        if (e.code === Exceptions.AlreadyExistsException) {
+          try {
             await cloudFormation(region)
               .updateStack(template)
               .promise();
+          } catch (e) {
+            if (e.code === Exceptions.ValidationError) {
+              await cloudFormation(region)
+                .deleteStack({
+                  StackName: stackName
+                })
+                .promise();
+            }
+            throw e;
           }
         }
-        await cloudFormation(region)
-          .waitFor("stackCreateComplete", { StackName: stackName }, () => {
-            return callIfFunction(
-              afterCreate,
-              region,
-              getStackResources(stackName, region)
-            );
-          })
-          .promise();
-      });
-    },
-    Delete: async regions => {
-      regions.forEach(async region => {
-        await callIfFunction(
-          beforeDelete,
-          region,
-          getStackResources(stackName, region)
-        );
-        await cloudFormation(region)
-          .deleteStack({
-            StackName: stackName
-          })
-          .promise();
-        await cloudFormation(region)
-          .waitFor("stackDeleteComplete", { StackName: stackName }, () =>
-            callIfFunction(
-              afterDelete,
-              region,
-              getStackResources(stackName, region)
-            )
-          )
-          .promise();
-      });
-    }
+      }
+      await cloudFormation(region)
+        .waitFor("stackCreateComplete", { StackName: stackName }, () => {
+          return callIfFunction(
+            afterCreate,
+            region,
+            getStackResources(stackName, region)
+          );
+        })
+        .promise();
+    });
+
+  return {
+    stackName,
+    List,
+    ListAllStacks,
+    Create,
+    Delete
   };
 };

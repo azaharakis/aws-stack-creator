@@ -3,3 +3,4 @@ TODO:
 - Make exiting out of describe calls quicker (awaiting the promise blocks the exiting of the recursive function)
 - Handle selected regions some with stacks some without
 - Use an event emitter for storing the selected regions, pass it in at the top of the menu
+- Fix initial list and describe to not throw an error if there are no stacks

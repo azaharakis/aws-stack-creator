@@ -1,8 +1,8 @@
 import inquirer from "inquirer";
 import fs from "fs";
 
-const renderMenu = async items =>
-  await inquirer.prompt([
+const renderMenu = items =>
+  inquirer.prompt([
     {
       name: "choice",
       type: "list",
@@ -51,23 +51,16 @@ export const setRegions = async regionList => {
 
 const timeout = ms => new Promise(res => setTimeout(res, ms));
 
-const loopUntilQuit = async fn => {
+export const loopUntilFnReturnsTrue = async fn => {
   let breakLoop = false;
   const listenForCancel = function() {
     breakLoop = true;
     process.removeListener("SIGINT", listenForCancel);
   };
   process.on("SIGINT", listenForCancel);
-  await fn();
+  breakLoop = await fn();
   await timeout(1000);
   process.removeListener("SIGINT", listenForCancel);
-  !breakLoop && (await loopUntilQuit(fn));
+  breakLoop !== true && (await loopUntilFnReturnsTrue(fn));
 };
 
-export const clearAndCallAgain = (fn, proccesor) => {
-  return loopUntilQuit(async () => {
-    const result = await fn();
-    process.stdout.write("\x1B[2J");
-    console.table(proccesor ? proccesor(result) : result);
-  });
-};
