@@ -1,4 +1,4 @@
 phases:
   install:
-  commands:
-    - "npm install"
+    commands:
+      - "npm install"
